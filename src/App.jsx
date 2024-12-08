@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { motion } from 'framer-motion';
 
 ChartJS.register(
   CategoryScale,
@@ -28,16 +29,28 @@ const App = () => {
   const [forecast, setForecast] = useState(null);
   const [error, setError] = useState('');
 
-  const fetchWeather = async () => {
+  const fetchWeather = async (location = null) => {
     try {
       setError('');
       const apiKey = '90621323a40ac00af36db783b26d8772';
-      const weatherRes = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
-      );
-      const forecastRes = await axios.get(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`
-      );
+      let weatherRes, forecastRes;
+
+      if (location) {
+        weatherRes = await axios.get(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&appid=${apiKey}&units=metric`
+        );
+        forecastRes = await axios.get(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${location.lat}&lon=${location.lon}&appid=${apiKey}&units=metric`
+        );
+      } else {
+        // Fetch weather using city name
+        weatherRes = await axios.get(
+          `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+        );
+        forecastRes = await axios.get(
+          `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`
+        );
+      }
 
       setWeather(weatherRes.data);
       setForecast(forecastRes.data.list.slice(0, 12));
@@ -45,6 +58,25 @@ const App = () => {
       setError('Kota tidak ditemukan atau input tidak valid');
       setWeather(null);
       setForecast(null);
+    }
+  };
+
+  const getLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          };
+          fetchWeather(location);
+        },
+        () => {
+          setError('Gagal mendeteksi lokasi. Harap izinkan akses lokasi.');
+        }
+      );
+    } else {
+      setError('Geolocation tidak didukung oleh browser Anda.');
     }
   };
 
@@ -68,7 +100,7 @@ const App = () => {
 
   return (
     <div className='min-h-screen bg-gradient-to-r from-blue-100 to-blue-50 flex flex-col items-center p-6'>
-      <h1 className='text-5xl font-bold text-blue-700 mb-8'>Aplikasi Cuaca</h1>
+      <h1 className='text-5xl font-bold text-blue-700 mb-8'>Weather App</h1>
       <div className='flex flex-col sm:flex-row items-center gap-4 mb-6 w-full max-w-md'>
         <input
           type='text'
@@ -79,14 +111,34 @@ const App = () => {
         />
         <button
           className='bg-blue-500 text-white px-4 py-2 whitespace-nowrap rounded hover:bg-blue-600 transition w-full sm:w-auto'
-          onClick={fetchWeather}
+          onClick={() => fetchWeather()}
         >
           Cari Cuaca
         </button>
+        <button
+          className='bg-blue-500 text-white px-4 py-2 whitespace-nowrap rounded hover:bg-blue-600 transition w-full sm:w-auto'
+          onClick={() => getLocation()}
+        >
+          Lokasi Sekarang
+        </button>
       </div>
-      {error && <p className='text-red-500 mb-4'>{error}</p>}
+      {error && (
+        <motion.p
+          className='text-red-500 mb-4'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {error}
+        </motion.p>
+      )}
       {weather && (
-        <div className='bg-white shadow-lg rounded-lg p-6 mb-6 text-center w-full max-w-lg'>
+        <motion.div
+          className='bg-white shadow-lg rounded-lg p-6 mb-6 text-center w-full max-w-lg'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           <h2 className='text-2xl font-bold mb-2'>
             {weather.name}, {weather.sys.country}
           </h2>
@@ -97,15 +149,20 @@ const App = () => {
           <p className='text-gray-700 text-lg'>
             Kelembapan: {weather.main.humidity}%
           </p>
-        </div>
+        </motion.div>
       )}
       {forecast && (
-        <div className='bg-white shadow-lg rounded-lg p-6 w-full max-w-4xl'>
+        <motion.div
+          className='bg-white shadow-lg rounded-lg p-6 w-full max-w-4xl'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           <h3 className='text-xl font-bold mb-4 text-center'>
             Prakiraan Cuaca (12 Jam Berikutnya)
           </h3>
           <Line data={forecastChart} options={{ maintainAspectRatio: true }} />
-        </div>
+        </motion.div>
       )}
     </div>
   );
